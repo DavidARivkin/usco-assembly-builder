@@ -1,6 +1,7 @@
 {
   "name": "usco-assembly-guide-builder",
   "version": "0.0.1",
+  "license": "AGPLV3",
   "private": true,
   "dependencies": {
     "webcomponentsjs": "Polymer/webcomponentsjs#~0.5.1",
@@ -23,7 +24,6 @@
   "resolutions": {
     "webcomponentsjs": "~0.5.1",
     "polymer-gestures": "~0.5.1",
-    "polymer": "master",
-    "core-component-page": "master"
+    "polymer": "master"
   }
 }

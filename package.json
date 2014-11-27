@@ -1,10 +1,9 @@
 {
   "name": "usco-assembly-guide-builder",
   "main": "index.html",
-  "chromium-args": "--ignore-gpu-blacklist",
   "description": "usco-assembly-guide-builder",
   "author": "Mark kaosat-dev Moissette",
-  "license": "MIT",
+  "license": "AGPLV3",
   "window": {
     "title": "Ui test",
     "toolbar": false,
