@@ -66,6 +66,11 @@ z-index: 5;}
           <input type="checkbox" checked="{{showIndicators}}"> </input>
         </core-tooltip>
         
+        <core-tooltip label="show axis" position="bottom" style="position:absolute;top:0px;right:80px;z-index:20">
+          <input type="checkbox" checked="{{showAxis}}"> </input>
+        </core-tooltip>
+        
+        
         <!--ui elements-->
         <template if="{{currentStep < totalSteps}}">
           <div style="position:absolute;right:10px;top:300px;z-index:5"> <button on-tap="{{nextStep}}">Next step</button> </div>
@@ -82,9 +87,13 @@ z-index: 5;}
           <three-js-webglRenderer id="webglRenderer"></three-js-webglRenderer>
 
           <three-js-scene name="main" active pickable>
-            <three-directionalLight castShadow onlyShadow intensity=0.2 pos=[150,150,1500]>  </three-directionalLight>
+            <three-light pos="[250,230,200]" intensity=0.3></three-light>
+             <three-spotLight pos=[150,350,290] shadow intensity=0.3></three-spotLight>
+            <three-light pos="[-250,-230,-200]" intensity=0.3></three-light>
+            
             <three-hemisphereLight color="0xffffEE" gndColor="0xffffEE" pos="[0, 1200, 1500]" intensity=0.6></three-hemisphereLight>
             <three-ambientLight color="0x252525" intensity=3> </three-ambientLight>
+            
           </three-js-scene>
           
           <three-js-scene name="helpers" active>
@@ -93,7 +102,7 @@ z-index: 5;}
             </template>
           </three-js-scene>
         
-           <three-js-viewport name="perspective" id="perspectiveView" class="perspectiveView" pickOnPointerMove="false">
+           <three-js-viewport name="perspective" id="perspectiveView" class="perspectiveView" pickOnPointerMove="true">
             <three-js-combinedCamera id="cam1" pos=[100,50,200] defaultPos=[100,50,200] orientation="{{camOrientation}}" up=[0,0,1]></three-js-combinedCamera>
             <three-js-orbitControls id="camCtrl" cameraUp=[0,0,1] autoRotate="{{autoRotate && (!selectedObject || selectRotate)}}" autoRotateSpeed=2 panSpeed=1.5> </three-js-orbitControls>
           </three-js-viewport>
@@ -194,6 +203,7 @@ z-index: 5;}
       },
       selectedMeshesChanged:function(){
         console.log("selectedMeshes", this.selectedMeshes);
+        if(this.selectedMeshes.length>0) this.selectedMesh = this.selectedMeshes[0];
       },
       __currentStepChanged:function(oldStep,newStep)
       {
@@ -243,6 +253,7 @@ z-index: 5;}
         //TODO: make sure the hierarchy and build instructions have been loaded first
         var currentStepData = nodes[newStep-1]; 
         var stepContainer = new THREE.Object3D();
+        stepContainer.name = "step_"+newStep+"container";
         var helpersContainer = new THREE.Object3D();
         this.stepLoadProgress = 0;
         //load data for current step
@@ -279,59 +290,60 @@ z-index: 5;}
         this.loadMeshesForBomEntries( requiredBomEntries ).then( function()
         {
         
-        for(var i=0;i<requiredData.length;i++)
-        {
-          
-          function wrapper(i)
+          for(var i=0;i<requiredData.length;i++)
           {
-            var part = requiredData[i];
             
-            function onMeshLoaded(origMesh){
-              var mesh = origMesh.clone();
-              mesh.geometry = origMesh.geometry;
-              mesh.position = mesh.position.fromArray( part.position );
-              if(currentStepData.partNumber != part.partNumber)
-              {mesh.material.color.setHex(0xff8800);}
-              //add current virtual shape & children to data per step
-              if(part.up){
-                mesh.lookAt(mesh.position.clone().add( new THREE.Vector3().fromArray( part.up )) ); 
+            function wrapper(i)
+            {
+              var part = requiredData[i];
+              
+              function onMeshLoaded(origMesh){
+                var mesh = origMesh.clone();
+                mesh.geometry = origMesh.geometry;
+                mesh.position = mesh.position.fromArray( part.position );
+                if(currentStepData.partNumber != part.partNumber)
+                {mesh.material.color.setHex(0xff8800);}
+                //add current virtual shape & children to data per step
+                if(part.up){
+                  mesh.lookAt(mesh.position.clone().add( new THREE.Vector3().fromArray( part.up )) ); 
+                };
+                
+                self.fillBomPerStep(part, mesh);
+                
+                stepContainer.add( mesh );
               };
-              
-              self.fillBomPerStep(part, mesh);
-              
-              stepContainer.add( mesh );
-            };
-            Q.when(self.bom[part.partNumber]._mesh,onMeshLoaded);
+              Q.when(self.bom[part.partNumber]._mesh,onMeshLoaded);
+            }
+            wrapper( i );
           }
-          wrapper( i );
-        }
-        //load connectors
-        if(currentStepData.connectors)
-        {
-          for(var i=0;i<currentStepData.connectors.length;i++)
+          //load connectors
+          if(currentStepData.connectors)
           {
-            var connectorData = currentStepData.connectors[i];
-            //console.log(i, connectorData, currentStepData.connectors[0] );
-            var up = connectorData.up || [0,0,1];
-            up = new THREE.Vector3().fromArray( up );
-            var connector = new Connector({up:up});
-            connector.position.fromArray( connectorData.position );
-            
-            helpersContainer.add( connector.generateRenderables({color:0x000001,baseDia:3}) );
-            //FIXME: should these arrows be the indicators for a verb
-            //should they be what the manual's creator defines?
-            
-            var end   = new THREE.Vector3().fromArray( connectorData.position );
-            var start = end.clone().add( up.clone().multiplyScalar(25) );
-            var arrow = new DistanceHelper({start: start, end:end});
-            //arrow.toggleText(false);
-            //hack-ish
-            arrow.label.parent.remove(arrow.label);
-            helpersContainer.add( arrow );
+            for(var i=0;i<currentStepData.connectors.length;i++)
+            {
+              console.log("oooo connectors");
+              var connectorData = currentStepData.connectors[i];
+              //console.log(i, connectorData, currentStepData.connectors[0] );
+              var up = connectorData.up || [0,0,1];
+              up = new THREE.Vector3().fromArray( up );
+              var connector = new Connector({up:up});
+              connector.position.fromArray( connectorData.position );
+              
+              helpersContainer.add( connector.generateRenderables({color:0x000001,baseDia:3}) );
+              //FIXME: should these arrows be the indicators for a verb
+              //should they be what the manual's creator defines?
+              
+              var end   = new THREE.Vector3().fromArray( connectorData.position );
+              var start = end.clone().add( up.clone().multiplyScalar(25) );
+              var arrow = new DistanceHelper({start: start, end:end, arrowColor:0xff0000});
+              //arrow.toggleText(false);
+              //hack-ish
+              //arrow.label.parent.remove(arrow.label);
+              helpersContainer.add( arrow );
+            }
           }
-        }
-        stepContainer.add( helpersContainer );
-        stepContainer.indicators = helpersContainer;
+          stepContainer.add( helpersContainer );
+          stepContainer.indicators = helpersContainer;
         });
         
         //remove from scene the container object of the previously displayed step        
@@ -549,11 +561,10 @@ z-index: 5;}
           var geometry = resource.data;
           
           geometry.computeBoundingBox();
-          /*//geometry.computeCentroids();
           geometry.computeBoundingSphere();
           //needed at least for .ply files
           geometry.computeVertexNormals();
-          geometry.computeFaceNormals();*/
+          geometry.computeFaceNormals();
 
           //nice color: 0x00a9ff
           var material = new THREE.MeshPhongMaterial( { color: 0x17a9f5, specular: 0xffffff, shininess: 1, shading: THREE.FlatShading} );//new THREE.MeshPhongMaterial( { color: 0x17a9f5, shading: THREE.FlatShading} );

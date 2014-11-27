@@ -49,7 +49,7 @@ Connector.prototype.generateRenderables=function(options)
 
   var arrowHeadMaterial = new THREE.MeshBasicMaterial({color:color});
   var arrowHead = new THREE.Mesh(new THREE.CylinderGeometry(0, 0.5, 3, 5, 5, false), arrowHeadMaterial);
-  arrowHead.position = to;
+  arrowHead.position.copy( to );
   var arrowTgt =  this.position.clone().add( this.up.clone().multiplyScalar(length*10) );
   arrowHead.lookAt( arrowTgt );
   arrowHead.rotateX(Math.PI/2);
@@ -66,12 +66,12 @@ Connector.prototype.generateRenderables=function(options)
   baseIndicator.lookAt( to ); //.clone().multiplyScalar(100) );
   line.add( baseIndicator) ;
   
-  line.material.depthTest=false;
+  /*line.material.depthTest=false;
   line.material.depthWrite=false;
   arrowHeadMaterial.depthWrite=false;
   arrowHeadMaterial.depthTest=false;
   baseIndicator.material.depthWrite=false;
-  baseIndicator.material.depthTest = false;
+  baseIndicator.material.depthTest = false;*/
 
   line.renderDepth = arrowHead.renderDepth = baseIndicator.renderDepth = 1e20 ;
 
