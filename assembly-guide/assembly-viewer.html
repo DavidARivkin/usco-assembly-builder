@@ -1,5 +1,5 @@
 
-<!--<link rel="import" href="../components/core-localstorage/core-localstorage.html">-->
+<link rel="import" href="../components/core-localstorage/core-localstorage.html">
 <link rel="import" href="../components/core-icon-button/core-icon-button.html">
 <link rel="import" href="../components/core-tooltip/core-tooltip.html">
 <link rel="import" href="../components/paper-progress/paper-progress.html">
@@ -127,8 +127,9 @@ z-index: 5;}
       </usco-asset-manager>
       
       <!--AutoSaving settings to localstorage-->
-      <!--<core-localstorage name="settings-lastStep"   value="{{currentStep}}"></core-localstorage>
-      <core-localstorage name="settings-lastBuild"  value="{{showAxes}}"></core-localstorage>-->
+      <!--<core-localstorage name="settings-lastStep"   value="{{currentStep}}"></core-localstorage>-->
+      <core-localstorage name="settings-showAxis"  value="{{showAxis}}"></core-localstorage>
+      <core-localstorage name="settings-showIndicators"  value="{{showIndicators}}"></core-localstorage>
     </template>
     <script>Polymer("assembly-viewer", {
       //api attributes
@@ -137,8 +138,8 @@ z-index: 5;}
       instructions:null,
     
       //visual settings
-      showAxis:true,
-      showIndicators:true,
+      showAxis:false,
+      showIndicators:false,
       
       //internal
       currentStep:0,
@@ -248,6 +249,7 @@ z-index: 5;}
       },
       currentStepChanged:function(oldStep,newStep)
       {
+        console.log("changed step from"+oldStep+"to" + this.currentStep);
         var Q = require("q");
         var nodes = this._hierarchyNodes;
         //TODO: make sure the hierarchy and build instructions have been loaded first
@@ -321,7 +323,6 @@ z-index: 5;}
           {
             for(var i=0;i<currentStepData.connectors.length;i++)
             {
-              console.log("oooo connectors");
               var connectorData = currentStepData.connectors[i];
               //console.log(i, connectorData, currentStepData.connectors[0] );
               var up = connectorData.up || [0,0,1];
@@ -344,6 +345,13 @@ z-index: 5;}
           }
           stepContainer.add( helpersContainer );
           stepContainer.indicators = helpersContainer;
+          
+          //FIXME: hack
+          var visible = self.showIndicators;
+          helpersContainer.traverse(function(threeNode){
+            threeNode.visible = visible
+          });
+          
         });
         
         //remove from scene the container object of the previously displayed step        
@@ -361,7 +369,7 @@ z-index: 5;}
       },
       showIndicatorsChanged:function()
       {
-        console.log("showIndicators changed");
+        if(!this.currentStep || !this.dataPerSteps) return;
         var indicators = this.dataPerSteps[this.currentStep].indicators;
         if(!(indicators)) return;
         
@@ -571,7 +579,7 @@ z-index: 5;}
           //FIXME: in THREE.js R67> issues with lambert material + lack of compute centroids
           //new THREE.MeshLambertMaterial( {opacity:1,transparent:false,color: 0x0088ff} );
           var shape = new THREE.Mesh(geometry, material);
-          console.log("formating", shape);
+          //console.log("formating", shape);
           
           return shape;
         }

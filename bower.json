@@ -17,11 +17,13 @@
     "usco-stl-parser": "usco/usco-stl-parser#master",
     "paper-progress": "Polymer/paper-progress#~0.5.1",
     "core-tooltip": "Polymer/core-tooltip#~0.5.1",
-    "core-icon-button": "Polymer/core-icon-button#~0.5.1"
+    "core-icon-button": "Polymer/core-icon-button#~0.5.1",
+    "core-localstorage": "Polymer/core-localstorage#~0.5.1"
   },
   "resolutions": {
     "webcomponentsjs": "~0.5.1",
     "polymer-gestures": "~0.5.1",
-    "polymer": "master"
+    "polymer": "master",
+    "core-component-page": "master"
   }
 }
