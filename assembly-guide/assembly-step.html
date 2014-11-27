@@ -1,0 +1,547 @@
+
+<!--temporary-->
+<script src="libs/connector.js"></script>
+<link rel="import" href="../components/core-icons/av-icons.html">
+
+<polymer-element name="assembly-step" attributes="step bom" on-mouseleave="{{onPointerLeave}}">
+    <template>
+      <style>
+        :host{
+          display:block;
+          position:absolute;
+          right:30px;
+          z-index:10;
+          font-size:14px;
+        }
+        /*header{
+          font-weight:bold;
+        }*/
+        
+        core-icon{
+            width:18px !important;
+            height:18px !important;
+            font-size:18px !important;
+          }
+
+          core-icon-button {
+            display: inline-block;
+            background-image: none;
+            padding: 3px;
+            margin: 2px;
+          width: inherit;
+          height: inherit;
+            vertical-align: middle;
+            cursor: pointer;
+            
+            border-top-left-radius: 0px;
+          border-top-right-radius: 0px;
+          border-bottom-right-radius: 0px;
+          border-bottom-left-radius: 0px;
+          }
+
+          core-icon-button:hover{
+                      color:rgb(0, 153, 221);
+          }
+
+          core-item {
+            display: block;
+            height: 30px;
+            cursor: pointer;
+          }
+
+          core-item .item-container > core-icon {
+            margin: 0px 3px 0px 4px;
+          }
+
+          core-item:hover{
+                      color:rgb(0, 153, 221);
+          }
+
+          core-icon-button{
+                      color:black;
+          }
+
+          core-icon-button core-icon:hover{
+                      color:rgb(0, 153, 221);
+          }
+
+          core-icon-button.selected {
+            background-color: rgba(71, 167, 255, 1);
+            box-shadow: rgba(0, 0, 0, 0.0470588) 0px 1px 0px 0px inset, rgba(0, 0, 0, 0.117647) 0px 0px 0px 1px;
+          }
+
+          p{
+            margin-top: 2px;
+            padding-left:10px;
+          }
+
+          .usco-light>header{
+            color:red;
+            font-weight:bold;
+          }
+
+          .aPart{
+            color:rgb(0, 0, 0);
+          }
+
+          .aPart:hover{
+            color:rgb(0, 153, 221);
+            cursor:pointer;
+          }
+
+          .aPart:hover .partTitle{
+            font-weight:bold;
+            cursor:pointer;
+          }
+
+          .highlighted{
+            color:rgb(0, 153, 221);
+            font-weight:bold;
+          }
+
+          table{
+            font-size:12px;
+          }
+
+        
+      </style>
+      <header><div>Step:{{step}}/{{total}}</div><div>{{builds}}</div></header>
+      <div>
+        <article>
+        <header>Instructions:</header>
+        <p>{{instructionObj.verb}} {{instructionObj.amount}} 
+        <span on-mouseover="{{onInstructionSubectHover}}" on-mouseleave="{{onPointerLeave}}" class="aPart {{ {'highlighted':instructionObj.subjectPart.highlighted} | tokenList  }}"> <b>{{instructionObj.subject}}</b></span> {{instructionObj.preposition}} {{instructionObj.object}} {{instructionObj.prep2}}
+        <span on-mouseover="{{onInstructionComplementHover}}" on-mouseleave="{{onPointerLeave}}" class="aPart {{ {'highlighted':instructionObj.complementPart.highlighted} | tokenList  }}"><b>{{instructionObj.complement}}</b></span>
+        </article>
+      </div>
+      <div>
+        <header>Parts:</header>
+        <p>
+          <table>
+            <template repeat="{{part,partIndex in bom}}">
+                <tr on-mouseover="{{onHover}}" class="aPart {{ {'highlighted':part.highlighted} | tokenList  }}">
+                  <td>&nbsp  {{partIndex}}:</td><td class="partTitle"> {{part.title}} :</td><td> {{part.amount}}x</td>
+                </tr>
+            </template>
+          </table>
+        </p>
+        <header>Tools:</header>
+        <p>
+          <table>
+            <template repeat="{{tool,toolIndex in tools}}">
+              <tr>
+                <td>&nbsp  {{toolIndex}}:</td> <td>{{tool.name}}</td>
+              </tr>
+            </template>
+          </table>
+        </p>
+      </div>
+      <footer>
+        <core-tooltip label="Play/Pause" position="bottom">
+          <core-icon-button icon="{{ {'av:play-circle-fill':!isPlaying, 'av:pause-circle-fill':isPlaying} | tokenList }}" 
+            on-tap="{{toggleAnimation}}">
+         </core-icon-button>
+        </core-tooltip>
+        <core-tooltip label="Forward/Backwards" position="bottom">
+          <core-icon-button icon="{{ {'av:fast-rewind':!isForward, 'av:fast-forward':isForward} | tokenList }}" 
+            on-tap="{{toggleAnimationDir}}">
+          </core-icon-button>
+        </core-tooltip>
+        <core-tooltip label="repeat" position="bottom">
+          <input type="checkbox" checked="{{isRepeating}}"> </input>
+        </core-tooltip>
+        <core-tooltip label="next step" position="bottom">
+          <core-icon-button icon="av:skip-next" on-tap="{{reqNew}}"></core-icon-button>
+        </core-tooltip>
+      </footer>
+    </template>
+    <script>Polymer("assembly-step", {
+      step:1,
+      total:1,
+      autoPlay:true,
+      isPlaying:false,
+      isForward:true,
+      isRepeating:true,
+      highlightedItem:null,
+      
+      
+      instruction:"",
+      builds:"AssembledCubion#4",
+      bom:null,
+      tools:null,
+      
+      
+      hItems:null,
+      instructionObj:null,
+      bomByPartName:null,
+      
+      created:function()
+      {
+        this._animations = [];
+      },
+      attached:function()
+      {
+        
+      },
+      domReady:function(){
+        this.initialize();    
+        if(this.autoPlay)
+        {
+          this.isPlaying = true;
+        }
+      },
+      //attribute change callbacks
+      isPlayingChanged:function(oldIsPlaying, isPlaying){ 
+        if(oldIsPlaying)
+        {
+          for(var i=0;i<this._animations.length;i++)
+          {
+            var anim = this._animations[i];
+            anim.stop();
+          }        
+        }
+        else
+        {
+          for(var i=0;i<this._animations.length;i++)
+          {
+            var anim = this._animations[i];
+            anim.start();
+          } 
+        }
+      },
+      isRepeatingChanged:function()
+      {
+        if(this.isRepeating)
+        {
+          for(var i=0;i<this._animations.length;i++)
+          {
+            var anim = this._animations[i];
+            anim.repeat(Infinity);
+          } 
+        }
+        else
+        {
+          for(var i=0;i<this._animations.length;i++)
+          {
+            var anim = this._animations[i];
+            anim.repeat(0);
+          } 
+        }
+      },
+      bomChanged:function(){
+        this.bomByPartName = {};
+        for(var i=0;i<this.bom.length;i++)
+        {
+          this.bomByPartName[this.bom[i].title.toLowerCase()]= this.bom[i];
+        }
+        this.instructionObj.subjectPart = this.bomByPartName[this.instructionObj.subject.toLowerCase()];
+        this.instructionObj.complementPart = this.bomByPartName[this.instructionObj.complement.toLowerCase()];
+        
+      },
+      instructionChanged:function(oldInst, newInst){
+        var instruction = instructionParser.parse(this.instruction);
+        this.instructionObj = instruction;
+      },
+      highlightedItemChanged:function(oldItem, newItem)
+      {
+        if(oldItem)
+        {
+          oldItem.highlighted = false;
+           var oldHighlight = oldItem.instances[0];
+            if(oldHighlight._oldColor)
+            {
+              oldHighlight.material.color = oldHighlight._oldColor;
+            }
+            delete oldHighlight._oldColor;
+          /*for(var i=0;i<oldItem.instances.length;i++)
+          {
+            var oldHighlight = oldItem.instances[i];
+            if(oldHighlight._oldColor)
+            {
+              oldHighlight.material.color = oldHighlight._oldColor;
+            }
+            delete oldHighlight._oldColor;
+          }*/
+        }
+        if(newItem)
+        {
+          newItem.highlighted = true;
+          var newHighLight = newItem.instances[0];
+          newHighLight._oldColor = newHighLight.material.color;
+          newHighLight.material.color = new THREE.Color(0xf03333);
+          
+          /*for(var i=0;i<newItem.instances.length;i++)
+          {
+            var newHighLight = newItem.instances[i];
+            newHighLight._oldColor = newHighLight.material.color;
+            newHighLight.material.color = new THREE.Color(0xf03333);
+          }*/
+        }
+      },
+      //api
+      toggleAnimation:function()
+      {
+        this.isPlaying =! this.isPlaying;
+      },
+      toggleAnimationDir:function()
+      {
+        for(var i=0;i<this._animations.length;i++)
+        {
+          var anim = this._animations[i];
+          anim.stop().yoyo(true).start();
+          //anim.easing( TWEEN.Easing.Back.InOut)
+        }  
+        this.isForward =! this.isForward;
+      },
+      //helpers
+      onHover:function(event,detail,sender){
+        var model = sender.templateInstance.model.part;
+        this.highlightedItem = model;
+      },
+      onPointerLeave:function(event, detail, sender){
+        this.highlightedItem = null;
+      },
+      onInstructionSubectHover:function(event,detail,sender){
+        //FIXME: do this better
+        var subject = this.trim( sender.innerText.toLowerCase() );
+        var model = this.bomByPartName[subject];
+        this.highlightedItem = model;
+      },
+      onInstructionComplementHover:function(event,detail,sender){
+        var complement = this.trim( sender.innerText.toLowerCase() );
+        var model = this.bomByPartName[complement];
+        this.highlightedItem = model;
+      },
+      onAnimationComplete:function(bla){
+        console.log("animation complete",bla);
+        this.isPlaying = false;
+      },
+      //helpers
+      trim:function(s) {
+        return s.replace( /^\s+|\s+$/g, '' );
+      },
+      reverse:function()//this turns ins into outs , froms into tos etc
+      {
+      },
+      initialize:function()
+      {
+        
+        var threeViewer = document.querySelector('assembly-viewer');
+        
+        function makeBolt()
+        {
+          var boltHeight = 10;
+          var geometry = new THREE.CylinderGeometry(3,3, boltHeight,6);
+          geometry.applyMatrix(new THREE.Matrix4().makeRotationX( Math.PI / 2 ));
+          
+          var geometryHead = new THREE.CylinderGeometry(5,5, 2,10);
+          geometryHead.applyMatrix(new THREE.Matrix4().makeRotationX( Math.PI / 2 ));
+          geometryHead.applyMatrix(new THREE.Matrix4().makeTranslation( 0,0, -boltHeight/2 ));
+          
+          geometry.merge( geometryHead );
+          
+        	geometry.computeBoundingSphere();
+          geometry.computeBoundingBox();
+          var material = new THREE.MeshLambertMaterial( {opacity:1,transparent:true,color: 0xff8800} );
+          var bolt = new THREE.Mesh(geometry, material);
+          
+          //connectors 
+          //for bolt  
+          //TODO: this is both a visual and a logic connector, should be seperate  
+          var connectorSize = 2;
+          var geometry = new THREE.BoxGeometry( connectorSize, connectorSize, connectorSize/2 ); 
+        	geometry.computeBoundingSphere();
+          geometry.computeBoundingBox();
+	        var material = new THREE.MeshLambertMaterial( {opacity:1,transparent:true,color: 0xff0000,wireframe:true} ); 
+	        var tipConnector = new THREE.Mesh(geometry, material);
+	        
+	        //bolt.add( tipConnector );
+	        tipConnector.position.z = boltHeight/2;
+	        
+	        tipConnector.material.depthTest=false;
+          tipConnector.material.depthWrite=false;
+          tipConnector.renderDepth = 1e-20;
+          
+          
+          var geometry = new THREE.BoxGeometry( connectorSize, connectorSize, connectorSize/2 ); 
+        	geometry.computeBoundingSphere();
+          geometry.computeBoundingBox();
+	        var material = new THREE.MeshLambertMaterial( {opacity:1,transparent:true,color: 0xff0000,wireframe:true} ); 
+	        var endConnector = new THREE.Mesh(geometry, material);
+	        
+	        //bolt.add( endConnector );
+	        endConnector.position.z = -boltHeight/2;
+	        
+	        endConnector.material.depthTest=false;
+          endConnector.material.depthWrite=false;
+          endConnector.renderDepth = 1e-20;
+          
+          return bolt;
+        }  
+        
+        function makeTargetCube()
+        {
+          var connectorSize = 2;
+          var cubeSize = 30;
+          var geometry = new THREE.BoxGeometry( cubeSize, cubeSize, cubeSize ); 
+        	geometry.computeBoundingSphere();
+          geometry.computeBoundingBox();
+          var material = new THREE.MeshLambertMaterial( {opacity:1,transparent:false,color: 0x0088ff} ); 
+          var cube = new THREE.Mesh(geometry, material);
+          cube.name = "TargetCube";
+          cube.visible = false;
+          
+          /*var geometry = new THREE.BoxGeometry( connectorSize, connectorSize, connectorSize/2 ); 
+        	geometry.computeBoundingSphere();
+          geometry.computeBoundingBox();
+	        var material = new THREE.MeshLambertMaterial( {opacity:1,transparent:true,color: 0xff0000,wireframe:true} ); 
+	        var attachConnector = new THREE.Mesh(geometry, material);
+	        
+	        attachConnector.connectorFor = "Bolts"
+	        attachConnector.position.z = -cubeSize/2;
+	        attachConnector.material.depthTest=false;
+          attachConnector.material.depthWrite=false;
+          attachConnector.renderDepth = 1e-20;
+          
+          var attachConnectorTop = attachConnector.clone();
+          attachConnectorTop.position.z  = cubeSize/2;
+          
+          
+          var attachConnectorSide = attachConnector.clone();
+          attachConnectorSide.position.z  = 0;
+          attachConnectorSide.position.x  = cubeSize/2;*/
+          
+          
+          //cube.add( attachConnector );
+          /*cube.add( attachConnectorTop );
+          cube.add( attachConnectorSide );*/
+          
+          topConnector = new Connector();
+          bottomConnector = new Connector();
+          sideConnector = new Connector();
+          
+          topConnector.position.z = cubeSize/2;
+          bottomConnector.position.z = -cubeSize/2;
+          bottomConnector.up = new THREE.Vector3(0,0,-1);
+          sideConnector.position.x = -cubeSize/2;
+          sideConnector.up = new THREE.Vector3(-1,0,0);
+          
+          cube.connectors = [topConnector,bottomConnector, sideConnector];
+          /*cube.connectors.push( attachConnector );
+          cube.connectors.push( attachConnectorTop );
+          cube.connectors.push( attachConnectorSide );*/
+          
+          /*var c = new Connector();
+          cR = c.generateRenderables();
+          cube.add( cR );*/
+          
+          for(var i =0;i<cube.connectors.length;i++)
+          {
+            cR = cube.connectors[i].generateRenderables({color:0x000001});
+            cube.add( cR );
+          }
+	        
+	        return cube;
+        }
+        
+        
+        THREE.HelixCurve = THREE.Curve.create(
+          function() {
+          },
+          function(t) {
+              var a = 3; // radius
+              var b = 5; //height
+              var t2 = 2 * Math.PI * t * b / 4;
+              var tx = Math.cos(t2) * a,
+                  ty = Math.sin(t2) * a,
+                  tz = b * t;
+              return new THREE.Vector3(tx, ty, tz);
+          }
+          );
+
+
+        var  extrudeBend = new THREE.HelixCurve();
+
+        
+        var points = extrudeBend.getSpacedPoints(500);
+        var pointsG = new THREE.Geometry();
+        pointsG.vertices = points;
+		    var line = new THREE.Line( pointsG, new THREE.LineBasicMaterial( { color: 0xFF0000, linewidth: 2 } ) );
+		    line.position.z +=30
+        
+        threeViewer.addToScene( line );
+        
+        var target2 = cube = makeTargetCube();
+        threeViewer.addToScene( target2 );
+        
+        //threeViewer.addToScene( (new Connector().generateRenderables()) );
+        //        threeViewer.addToScene( generateRenderables() );
+        //build instruction anims tests
+        
+        for(var i=0;i<target2.connectors.length;i++)
+        {
+          var subject = bolt = makeBolt();
+          threeViewer.addToScene( subject );
+        
+          var tgtConnector = target2.connectors[i];
+          //usefull
+          var tgtWorldPos = tgtConnector.localToWorld(tgtConnector.position).clone();
+          //place bolts in the right place
+          var offset = 50;
+          var subjectAutoOffset = tgtWorldPos.clone().normalize().multiplyScalar( offset ); //.sub( new THREE.Vector3() );
+          
+          addAnimationForBolt(tgtConnector, subject, subjectAutoOffset, this._animations);
+        }
+        
+        var self = this;
+        function addAnimationForBolt(targetConnector, subject, startAnchor, animations)
+        {
+          var endAnchor   = targetConnector.localToWorld(targetConnector.position).clone();
+          
+          //for now use up vector as reference
+          subject.up = new THREE.Vector3(0,0,1);
+          subject.position.copy( startAnchor );
+          
+          var dirVect = endAnchor.clone().sub( startAnchor );
+          var dirVectNorm = dirVect.clone().normalize();
+          
+          var angle = startAnchor.angleTo(endAnchor);
+          
+          subject.lookAt( endAnchor ) ;
+          //visual indications
+          var arrow = new DistanceHelper({start: startAnchor, end:endAnchor});
+          threeViewer.addToScene( arrow );
+          
+          var duration = 3000;
+          var turns = 6;
+          var distance = 100;        
+          var axis = new THREE.Vector3(1,0,0);
+
+          var curPos = subject.position;
+          var curRot = subject.rotation;
+          
+          var pos = endAnchor.clone();//new THREE.Vector3(100,20,0);
+          var offs = 100;
+          
+          var curRot = new THREE.Euler();
+          var targetRot = subject.rotation.clone();
+          
+          var translation = new TWEEN.Tween( subject.position )
+            .to( { x: pos.x, y: pos.y, z:pos.z }, duration )
+            .delay(1000);
+
+            var r = turns * Math.PI//*2 ;// + curRot.rotation.z;
+            var rotation = new TWEEN.Tween( subject.rotation )
+              .to( { z:r}, duration )
+              .delay(1000);
+              
+            animations.push( rotation );
+            animations.push( translation );
+            translation.onComplete(function(){
+              self.onAnimationComplete()
+            });
+          }
+      }
+    });
+    </script>
+  </polymer-element>

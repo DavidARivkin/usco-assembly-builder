@@ -1,0 +1,429 @@
+<html>
+  <head>
+    <title>Assembly guide viewer example</title>
+      <script src="../components/webcomponentsjs/webcomponents.js"></script>
+
+      <link rel="import" href="assembly-viewer.html">
+      <link rel="import" href="assembly-step.html">
+
+      <style>
+         html, body, three-js, assembly-viewer{
+      margin: 0;
+      position: absolute;
+      height: 100%;
+      width:100%;
+      
+      -webkit-touch-callout: none;
+		-webkit-user-select: none;
+		-khtml-user-select: none;
+		-moz-user-select: none;
+		-ms-user-select: none;
+		user-select: none;
+    }
+     #perspectiveView{
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        z-index:1;
+      }
+      
+      </style>
+  </head>
+<body>
+  <!--Experimental-->
+  <assembly-viewer></assembly-viewer>
+
+  <script>
+      window.addEventListener('polymer-ready', function() {
+        console.log("web components ready");
+
+        //TODO:Show remaining items after a step?
+        //TODO: referencing between steps / parts
+        //TODO: linear (array) assembly instruction steps or hierarchy ? (leaning towards the second, would allow re-use of 
+        //instructions between projects: a set of assembly instructions would be for a given part
+        //TODO: perhaps "<of> top corner" (the of + top corner) can be made optional if we are defining the assembly of the top corner
+        //already ??
+        
+        //TODO: analyzsis of phrases like "do not tighten" -> could be computed to only go a part of the way of a bolt's length for example.
+        //TODO: branching and conditionals ?
+        //TODO: what is the best way to define what goes where ? 
+        /* ie : bolt M3 L 10 into HOle 1 ?
+        
+        //steps:
+        //pre-load assets for first step
+        //stop animations
+        //load animation data
+        //load models
+        
+        /* assembly instructions are a tree, with depth first assembly ("smallest"/leaves first);
+        assembly steps would need to contribute to an existing hierarchy, existing outside of them
+        */
+        /*3DR Tiki example (top)
+        <TopCorner>
+          Bom: 
+            - <TopCorner printedPart> : x1
+            - <M3 nuts>     : x2
+            - <M3L10 bolts> : x2
+            - <hallEndstop> : x1
+          
+        - push <M3 nuts> (x2) into holes of <TopCorner.stl> for endstop mounts -> <TopCorner>
+        - place <hallEndstop> (x1) into correct position on <TopCorner> -> <TopCorner>
+        - screw <M3L10 bolts> (x2) into <M3 nuts>/holes to mount <hallEndstop> into <TopCorner> -> <TopCorner>
+        
+        <M4L10 bolt + washer>
+        - put <M4 Tight washer> onto <M4L10 bolt> (x4) -> <M4L10 bolt + washer>
+        - screw <M4L10 bolt + washer> (x4) into <M4 holes> on <TopCorner>
+        - screw <M4 tSlot> onto <M4L10 bolt + washer>
+        
+        <TopStructure>
+          Bom:
+            - <TopCorner>       : x3
+            - <20x20x200 TSlot> : x3 
+          
+          - slide <20x20x200 TSlot> x3 onto <TopCorner> x3 at first TNut position
+          - slide together
+          - tighten all <M4L10 bolt> s
+        
+        */
+        
+        bom = [
+          {
+            id:0,
+            title:"Top corner",
+            description:"top corner, printed",
+            uri:"demo-data/TopCornerOK.stl",
+            thumbnailUrl:"",
+            amount:3
+          },
+          {id:1,
+          title:"M3 Nut",
+          description:"sdfsdfd",
+          uri:"demo-data/M3Nut.stl",
+          thumbnailUrl:"",
+            amount:2
+          },
+          {id:2,
+          title:"6 mm M3 Bolt",
+          description:"sdfsdfd",
+          uri:"demo-data/M3Bolt_L6.stl",
+          thumbnailUrl:"",
+            amount:2
+          },
+          {
+            id:3,
+            title:"10 mm M3 Bolt",
+            description:"sdfsdfd",
+            uri:"demo-data/M3Bolt_L10.stl",
+            thumbnailUrl:"",
+            amount:4
+          },
+          {
+            id:4,
+            title:"bottom corner",
+            description:"printed bottom corner/motor mount",
+            uri:"demo-data/BottomCorner.stl",
+            thumbnailUrl:"",
+            amount:3
+          }
+        ];
+        
+        //Exploring data structures for build instructions
+        //based on tracker.json datastructure from TTN ?
+        /*
+           {
+               "text":"push 2 M3 Nut into left the top corner",
+               
+               //"text":"push 2x M3 Nut into left nut hole of top corner",
+           }
+            {ref 0
+         text attach lid to thing using 
+          steps 1,2
+        }
+           { ref=1
+               "text":"push 1 M3 Nut into left nut hole of top corner",
+            },
+            { ref=2
+               "text":"push 1 M3 Nut into right nut hole of top corner",
+            },
+        */
+        instructions = [
+            { 
+               "text":"push 1 M3 Nut into left nut hole of top corner",
+            },
+            { 
+               "text":"push 1 M3 Nut into right nut hole of top corner",
+            },
+            {
+               "text":"put hall sensor onto top corner, aliging the sensor with the notch",
+            },
+            {
+               "text":"screw 2 6mm M3 Bolts into nuts",
+            },
+            {
+               "text":"put 4 M4 washers into latteral holes of top corner",
+            },
+            {
+               "text":"screw 4 10mm M4 Bolts into latteral holes of top corner (do not tighten)",
+            },
+            {
+               "text":"screw 1 M4 T-nut on each bolt (do not tighten)",
+            },
+            {
+               "text":"put 1 M5 washer onto a 10mm M5 Bolt",
+            },
+            {
+               "text":"screw the previous into front hole of top corner (do not tighten)",
+            },
+            {
+               "text":"slide 3 200m t-slots into each of the top corners",
+            },
+         ];
+        
+        //other style of instructions, hierarchical
+        instructionsAlternative={
+          "top corner":{
+            instructions:[ 
+              {
+                 "text":"push 1 M3 Nut into left nut hole of top corner",
+              },
+              {
+                 "text":"push 1 M3 Nut into right nut hole of top corner",
+              },
+              {
+                "text":"put hall sensor onto top corner, aliging the sensor with the notch",
+              },
+              {
+               "text":"screw 2 6mm M3 Bolts into nuts",
+              },
+              {
+                "text":"screw 4 10mm M4 Bolt + washer into latteral holes of top corner (do not tighten)",
+              },
+              {
+                "text":"screw 1 M4 T-nut on each 10mm M4 Bolt + washer (do not tighten)",
+              },
+              {
+               "text":"screw 10mm M4 Bolt + washer into front hole of top corner (do not tighten)",
+              },
+            ],
+          },
+          "10 mm M4 bolt + washer":{
+                  instructions:[
+                     {
+                       "text":"put 1 M4 washer onto 1 10 mm M4 bolt",
+                      },
+                  ]
+          },
+          "10 mm M5 bolt + washer":{
+                  instructions:[
+                     {
+                       "text":"put 1 M5 washer onto 1 10 mm M5 bolt",
+                      },
+                  ]
+          },
+          "top assembly":{
+            instructions:[
+              {
+               "text":"place 3 top corner in front of the 200m t-slots",
+              },
+              {
+               "text":"slide 3 200m t-slots into each top corner simultaneously",
+              }
+            ]
+          }
+        };
+        
+        assemblyTest = [
+           {
+            name:"3DR-TIKI",
+            position:[0,0,0],
+            rotation:[0,0,0],
+            scale:[1,1,1],
+            children:[
+             {
+              name:"top corner",
+              partNumber:0,
+              position:[0,0,0],
+              rotation:[0,0,0],
+              scale:[1,1,1],
+              children:[
+                {
+                  name:"M3 nut",
+                  partNumber:1,
+                  position:[54,-8.5,3.6],
+                  rotation:[0,0,0],
+                  scale:[1,1,1],
+                  up:[0,0,1]
+                },
+                {
+                  name:"M3 nut",
+                  partNumber:1,
+                  position:[54,8.5,3.6],
+                  rotation:[0,0,0],
+                  scale:[1,1,1],
+                  up:[0,0,1]
+                },
+                {
+                  name:"hallEndstopMountBoltR",
+                  partNumber:2,
+                  position:[54,8.5,5],
+                  rotation:[0,0,0],
+                  scale:[1,1,1],
+                  up:[0,0,-1]
+                },
+                {
+                  name:"hallEndstopMountBoltL",
+                  partNumber:2,
+                  position:[54,-8.5,5],
+                  rotation:[0,0,0],
+                  scale:[1,1,1],
+                  up:[0,0,-1]
+                },
+                {
+                  name:"sideTSlotMountBoltL1",
+                  partNumber:3,
+                  position:[70,-30,10],
+                  rotation:[0,0,0],
+                  scale:[1,1,1],
+                  up:[0.5,1,0]
+                },
+                {
+                  name:"sideTSlotMountBoltR1",
+                  partNumber:3,
+                  position:[70,30,10],
+                  rotation:[0,0,0],
+                  scale:[1,1,1],
+                  up:[0.5,-1,0]
+                },
+                {name:"sideTSlotMountBoltL2",
+                  partNumber:3,
+                   position:[45,-20,10],
+                   rotation:[0,0,0],
+                   scale:[1,1,1],
+                   up:[0.5,1,0]
+                 },
+                 {name:"sideTSlotMountBoltL2",
+                  partNumber:3,
+                   position:[45,20,10],
+                   rotation:[0,0,0],
+                   scale:[1,1,1],
+                   up:[0.5,-1,0]
+                 },
+              ],
+              connectors:[
+                {name:"left nut hole",
+                 type:"connector",
+                 position:[54,-9,5],
+                 rotation:[0,0,0],
+                 scale:[1,1,1],
+                 up:[0,0,1]
+                 },
+                 {name:"right nut hole",
+                 type:"connector",
+                 position:[54,9,5],
+                 rotation:[0,0,0],
+                 scale:[1,1,1],
+                 up:[0,0,1]
+                 },
+                 {name:"tSlotMount1",
+                   type:"connector",
+                   position:[70,-30,10],
+                   rotation:[0,0,0],
+                   scale:[1,1,1],
+                   up:[0.5,1,0]
+                 },
+                 {name:"tSlotMount2",
+                   type:"connector",
+                   position:[70,30,10],
+                   rotation:[0,0,0],
+                   scale:[1,1,1],
+                   up:[0.5,-1,0]
+                 }
+                 ,
+                 {name:"tSlotMount3",
+                   type:"connector",
+                   position:[45,-20,10],
+                   rotation:[0,0,0],
+                   scale:[1,1,1],
+                   up:[0.5,1,0]
+                 },
+                 {name:"tSlotMount4",
+                   type:"connector",
+                   position:[45,20,10],
+                   rotation:[0,0,0],
+                   scale:[1,1,1],
+                   up:[0.5,-1,0]
+                 },
+                 {name:"verticalTSlotMount",
+                   type:"connector",
+                   position:[0,0,10],
+                   rotation:[0,0,0],
+                   scale:[1,1,1],
+                   up:[-1,0,0]
+                 },
+                 {name:"sideTSlotSlideStartR",
+                   type:"connector",
+                   position:[72,45,10],
+                   rotation:[0,0,0],
+                   scale:[1,1,1],
+                   up:[1,0.57,0]
+                 },
+                 {name:"sideTSlotSlideEndR",
+                   type:"connector",
+                   position:[30,24,10],
+                   rotation:[0,0,0],
+                   scale:[1,1,1],
+                   up:[1,0.57,0]
+                 },
+                 {name:"sideTSlotSlideStartL",
+                   type:"connector",
+                   position:[72,-45,10],
+                   rotation:[0,0,0],
+                   scale:[1,1,1],
+                   up:[1,-0.57,0]
+                 },
+                 {name:"sideTSlotSlideEndL",
+                   type:"connector",
+                   position:[30,-24,10],
+                   rotation:[0,0,0],
+                   scale:[1,1,1],
+                   up:[1,-0.57,0]
+                 }
+                 
+              ]
+             },
+             { name:"bottomCorner",
+              partNumber:4,
+              position:[0,0,0],
+              rotation:[0,0,0],
+              scale:[1,1,1],
+              children:[
+                {
+                  name:"mountNut",
+                  partNumber:1,
+                  position:[54,-9,5],
+                  rotation:[0,0,0],
+                  scale:[1,1,1],
+                },
+                {
+                  name:"mountBolt",
+                  partNumber:3,
+                  position:[54,9,5],
+                  rotation:[0,0,0],
+                  scale:[1,1,1],
+                },
+              ],
+             }
+           ]
+           }
+        ];
+   
+
+	      var assemblyViewer = document.querySelector('assembly-viewer');
+	      assemblyViewer.bom = bom;
+	      assemblyViewer.instructions = instructions;
+	      assemblyViewer.assembly = assemblyTest;
+    });
+  </script>  
+</body>
+</html>

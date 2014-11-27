@@ -1,0 +1,34 @@
+//wordCount = w:(word space?)* { return w.length; }
+
+prout =verb integer? chou sep* $preposition sep* $endchou
+
+/*start
+  = verb:verb subject:wordgroup prep:preposition? object:word?
+
+{return {
+ verb:verb,
+ subject:subject,
+ preposition:prep,
+ object:object
+};
+}*/
+
+chou = $(!preposition.)+
+
+endchou = bla:$(!end.)+
+
+wordgroup = (w:(space? word space?)+ ! preposition) {return w.join('').replace(/,/g,"");}
+word  = letter+
+letter= [a-zA-Z0-9]
+space = " "
+sep   = [ \t\r\n]
+end = [\n]
+
+preposition
+  = sep*('into'/'from'/'to'/'on'/'off'/'at'/'in front')
+
+verb
+  = verb:('push'/'slide'/'attach'/'screw'/'bolt'/'place') sep* { return verb; }
+
+integer "integer"
+  = digits:[0-9]+ { return parseInt(digits.join(""), 10); }

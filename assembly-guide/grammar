@@ -1,0 +1,33 @@
+/*
+ * Test grammar
+ */
+
+start
+  = verb:verb amount:integer? subject:noun preposition:preposition complement:noun preposition2:preposition? localisation:noun?
+
+{return {
+ verb:verb,
+ amount:amount,
+ subject:subject,
+ preposition:preposition,
+ complement:complement,
+ preposition2:preposition2,
+ localisation:localisation
+};
+}
+
+noun
+  = (sep*noun:([a-zA-Z]*) sep*) {return noun.join("").replace(" ","");}
+
+
+verb
+  = verb:('push'/'slide'/'attach'/'screw'/'bolt'/'place') sep* { return verb; }
+ 
+preposition
+  = preposition:('into'/'from'/'to'/'on'/'off'/'at'/'in front')
+
+sep
+  = [ \t\r\n]
+
+integer "integer"
+  = digits:[0-9]+ { return parseInt(digits.join(""), 10); }

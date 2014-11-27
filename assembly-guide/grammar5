@@ -1,0 +1,27 @@
+wordCount = w:(word space?)* { return w.length; }
+
+start
+  = verb:verb subject:word prep:preposition? object:noun?
+
+{return {
+ verb:verb,
+ subject:subject,
+ preposition:prep,
+ object:object
+};
+}
+
+word  = letter+
+letter= [a-zA-Z0-9]
+space = " "
+sep   = [ \t\r\n]
+
+
+preposition
+  = preposition:('into'/'from'/'to'/'on'/'off'/'at'/'in front')
+
+verb
+  = verb:('push'/'slide'/'attach'/'screw'/'bolt'/'place') sep* { return verb; }
+
+integer "integer"
+  = digits:[0-9]+ { return parseInt(digits.join(""), 10); }

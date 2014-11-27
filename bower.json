@@ -3,9 +3,25 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "platform": "Polymer/platform#master",
+    "webcomponentsjs": "Polymer/webcomponentsjs#~0.5.1",
     "polymer": "Polymer/polymer#master",
-    "usco-viewer-base": "usco/usco-viewer-base#master",
-    "usco-command-manager" : "usco/usco-command-manager#master"
+    "polymer-gestures": "kaosat-dev/polymer-gestures#~0.5.1",
+    "three-js": "usco/three-js",
+    "three-js-helpers": "usco/three-js-helpers",
+    "tween-js": "usco/tween-js",
+    "usco-asset-manager": "usco/usco-asset-manager#master",
+    "usco-client-deps": "usco/usco-client-deps#master",
+    "usco-xhr-store": "usco/usco-xhr-store#master",
+    "usco-desktop-store": "usco/usco-desktop-store#master",
+    "usco-ctm-parser": "usco/usco-ctm-parser#master",
+    "usco-stl-parser": "usco/usco-stl-parser#master",
+    "paper-progress": "Polymer/paper-progress#~0.5.1",
+    "core-tooltip": "Polymer/core-tooltip#~0.5.1",
+    "core-icon-button": "Polymer/core-icon-button#~0.5.1"
+  },
+  "resolutions": {
+    "webcomponentsjs": "~0.5.1",
+    "polymer-gestures": "~0.5.1",
+    "polymer": "master"
   }
 }
